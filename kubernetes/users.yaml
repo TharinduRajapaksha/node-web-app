@@ -1,0 +1,108 @@
+# Creating the storage class
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+
+
+
+---
+
+
+
+
+# Creating the persistent volume
+apiVersion: v1
+kind: PersistentVolume                                        # Crating the persistent volume object
+metadata:                                                     # metadata for the persistent volume
+  name: efs-pv
+spec:                                                         # Details for the persistent volume
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  storageClassName: efs-sc
+  csi:
+    driver: efs.csi.aws.com
+    volumeHandle: fs-0080eb3b781938210
+
+
+
+
+---
+
+
+
+# Creating the persistent volume claim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:                                                     # metadata for the persistent volume claim
+  name: efs-pvc
+spec:                                                         # Details for the persistent volume claim
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: efs-sc                                   # using the above created storage class
+  volumeName: efs-pv                                         # using the above created persistent volume
+
+
+
+
+---
+
+
+
+# Creating the service
+apiVersion: v1
+kind: Service
+metadata:
+  name: users-service
+spec:
+  selector:
+    app: users
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+
+
+
+
+---
+
+
+# Creating the deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: users-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: users
+  template:
+    metadata:
+      labels:
+        app: users
+    spec:
+      containers:
+        - name: users-api
+          image: tharindurajapaksha/kub-dep-users:latest
+          env:
+            - name: MONGODB_CONNECTION_URI                                                                                        # envirment variable for mongo DB connection
+              value: 'mongodb+srv://max:secret123@goalsapp.crgxcdr.mongodb.net/?retryWrites=true&w=majority&appName=goalsapp'     # connection string form mngodb atlas database
+            - name: AUTH_API_ADDRESSS
+              value: 'auth-service.default:3000'
+          volumeMounts:                                       # Mounting the claimed volume to the container
+            - name: efs-vol
+              mountPath: /app/users
+          volumes:                                                # Adding a volume to the deployment
+            - name: efs-vol
+          persistentVolumeClaim:                              # giving details of the volume claim                                                                                                # giving a name
+              claimName: efs-pvc                              # using the above created persistent volume claim 

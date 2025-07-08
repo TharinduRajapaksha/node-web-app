@@ -1,0 +1,44 @@
+# Creating the service
+apiVersion: v1
+kind: Service
+metadata:
+  name: tasks-service
+spec:
+  selector:
+    app: tasks
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+
+
+
+
+---
+
+
+# Creating the deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasks-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tasks
+  template:
+    metadata:
+      labels:
+        app: tasks
+    spec:
+      containers:
+        - name: tasks-api
+          image: tharindurajapaksha/kub-dep-tasks:latest
+          env:
+            - name: MONGODB_CONNECTION_URI                                                                                        # envirment variable for mongo DB connection
+              value: 'mongodb+srv://max:secret123@goalsapp.crgxcdr.mongodb.net/?retryWrites=true&w=majority&appName=goalsapp'     # connection string form mngodb atlas database
+            - name: AUTH_API_ADDRESSS
+              value: 'auth-service.default:3000'
+          
